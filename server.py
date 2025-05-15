@@ -21,13 +21,26 @@ len, addr = s.recvfrom(1235)
 len = len.decode()
 len = int(len)
 print("lunghezza del messaggio: ", len)
-received = 0 # pacchetto ricevuto
+expectedN = 0 # pacchetto ricevuto
 
-while received != len:
-        message, addr = s.recvfrom(1235)
-        message = message.decode()
-        print("pacchetto RICEVUTO", received, ":", message)
-        ack = "ricevuto"
-        s.sendto(ack.encode(), addr)
-        print("ack inviato")
-        received = received + 1
+while expectedN != len:
+        s.settimeout(1)  # 1 secondo di timeout
+        try :
+                message, addr = s.recvfrom(1235)
+                message = message.decode()
+                seq, bit = message.split(":")
+                receivedN = int(seq)
+                print("pacchetto RICEVUTO", receivedN, "==", expectedN)
+                if receivedN != expectedN:
+                        print("ordine errato, pacchetto perso")
+                        ack = str(expectedN - 1) + ":" + "ack"
+                else:
+                        print("ordine corretto")
+                        ack = str(receivedN) + ":" + "ack"
+                        expectedN = expectedN + 1
+                s.sendto(ack.encode(), addr)
+                print("ack inviato", ack)
+        except socket.timeout:
+                print("⏳ Timeout: nessun pacchetto ricevuto")
+                ack = str(expectedN - 1) + ":" + "time"
+                s.sendto(ack.encode(), addr)

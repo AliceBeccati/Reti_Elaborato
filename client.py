@@ -31,38 +31,47 @@ ip = socket.gethostbyname(host)
 port = 1235 
 
 #while True:
-try:
-        # inviate il messaggio
-        message = input(str("Io : "))
-        print ('sending "%s"' % message)
-        time.sleep(2) #attende 2 secondi prima di inviare la richiesta
-        message=binarycode(message)
-        print(message)
-        #invio lunghezza bit del messaggio
-        len = str(len(message))
-        s.sendto(len.encode(),(host, 1024))
+# inserimento messaggio
+message = input(str("Io : "))
+print ('sending "%s"' % message)
+message = binarycode(message)
+print(message)
+#invio lunghezza bit del messaggio
+len = str(len(message))
+s.sendto(len.encode(),(host, 1024))
+len = int(len)
+#inizalizzazione finestra
+sixzeWind=int(input("Inserisci la dimensione della finestra -> ")) # dimensione della finestra
+windMaxIndex = sixzeWind - 1
+windMinIndex = 0
 
-        sent=0 # bit in trasmissione
-        wind=int(input("Inserisci la dimensione della finestra -> "))-1 # dimensione della finestra
-        len=int(len)
-        ack=""
-        
+sent=0 # bit in trasmissione
+ack=""
 
-        while sent!=len:
+while windMinIndex!=len:
+    # invia pacchetti finché c'è spazio nella finestra
+    while sent <= windMaxIndex and sent!=len:
+        if random.random() > 0.007:# pacchetto perso 0.7% dei casi
             print("pacchetto ", sent, "inviato : ",message[sent])
-            bitSent = s.sendto(message[sent].encode(),(host, 1024))
-            time.sleep(1)
-            ack, addr = s.recvfrom(1024)
-            print("ack ricevuto: ", ack)
-            ack=ack.decode()
-            if(ack!="lost"):
-                time.sleep(1)
-                print("ack RIVEVUTO")
-                sent=sent+1
-            else:
-                print("ack PERSO")
-                time.sleep(1)
-                print("ritrasmissione pacchetto...")
-                
-except Exception as info:
-        print(info)
+            pacchetto = str(sent) + ":" + message[sent]
+            bitSent = s.sendto(pacchetto.encode(),(host, 1024))
+        else:
+            print("pacchetto ", sent, "perso")
+        sent += 1
+        
+    ack, addr = s.recvfrom(1024)
+    ack = ack.decode()
+    ack, descr = ack.split(":")
+    ack=int(ack)
+    print("ack ricevuto: ", ack)
+    print("descrizione: ", descr)
+    if descr == "time":
+       print("ACK non valido ricevuto, ignorato.")
+    elif(ack==windMinIndex):
+        print("ack OK")
+        windMaxIndex += 1
+        windMinIndex += 1
+    else:
+        print("ack ERRORE")
+        sent = windMinIndex
+        print("ritrasmissione pacchetto...")
