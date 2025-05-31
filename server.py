@@ -15,32 +15,48 @@ ip = socket.gethostbyname(host)
 port = 1024 
 s.bind((host, port))
 
-#while True:
-print("server avviato...\n")
-len, addr = s.recvfrom(1235)
-len = len.decode()
-len = int(len)
-print("lunghezza del messaggio: ", len)
-expectedN = 0 # pacchetto ricevuto
+while True:
+        s.settimeout(None)
+        print("server IN ASCOLTO...\n")
+        
+        while True:  #controllo che non arrivino pacchetti non validi
+                l, addr = s.recvfrom(1235)
+                l = l.decode()
+                if ":" not in l:      
+                        l = int(l)
+                        print("lunghezza del messaggio: ", l)
+                        break
 
-while expectedN != len:
-        s.settimeout(1)  # 1 secondo di timeout
-        try :
-                message, addr = s.recvfrom(1235)
-                message = message.decode()
-                seq, bit = message.split(":")
-                receivedN = int(seq)
-                print("pacchetto RICEVUTO", receivedN, "==", expectedN)
-                if receivedN != expectedN:
-                        print("ordine errato, pacchetto perso")
-                        ack = str(expectedN - 1) + ":" + "ack"
-                else:
-                        print("ordine corretto")
-                        ack = str(receivedN) + ":" + "ack"
-                        expectedN = expectedN + 1
-                s.sendto(ack.encode(), addr)
-                print("ack inviato", ack)
-        except socket.timeout:
-                print("⏳ Timeout: nessun pacchetto ricevuto")
-                ack = str(expectedN - 1) + ":" + "time"
-                s.sendto(ack.encode(), addr)
+
+        wind, addr = s.recvfrom(1235)
+        wind = wind.decode()
+        wind = int(wind)
+        print("lunghezza della finestra: ", wind)
+
+        expectedN = 0 # pacchetto ricevuto
+        messages = ""
+        
+        while expectedN != l:
+                s.settimeout(wind * 0.5)  # timeout si adatta alla dimensione della finestra
+                try :
+                        message, addr = s.recvfrom(1235)
+                        message = message.decode()
+                        seq, bit = message.split(":")
+                        receivedN = int(seq)
+                        print("pacchetto RICEVUTO", receivedN, "==", expectedN)
+                        if receivedN != expectedN:
+                                print("ordine errato, pacchetto perso")
+                                ack = str(expectedN - 1) + ":" + "ack"
+                        else:
+                                print("ordine corretto")
+                                messages = messages + bit
+                                ack = str(receivedN) + ":" + "ack"
+                                expectedN = expectedN + 1
+                        s.sendto(ack.encode(), addr)
+                        print("ack inviato", ack)
+                except socket.timeout:
+                        print("Timeout: nessun pacchetto ricevuto")
+                        ack = str(expectedN - 1) + ":" + "time"
+                        s.sendto(ack.encode(), addr)
+ 
+        print("mess == ", bin2text(messages))
